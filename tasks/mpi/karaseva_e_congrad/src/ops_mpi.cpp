@@ -94,7 +94,7 @@ bool TestTaskMPI::RunImpl() {
     p[i] = r[i];
   }
 
-  // Compute initial residual norm using atomic operations
+  // Compute initial residual norm using atomic operations for macOS compatibility
   double local_rs_old = 0.0;
 #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -175,18 +175,16 @@ bool TestTaskMPI::RunImpl() {
   boost::mpi::gather(world_, x_.data(), static_cast<int>(local_size_), global_x, 0);
   boost::mpi::broadcast(world_, global_x, 0);
 
-  // Ensure output buffer is properly initialized on all processes
-  if (rank == 0) {
-    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+  // Ensure all processes have the solution in their output buffer
+  auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+  if (global_x.size() == static_cast<size_t>(task_data->outputs_count[0])) {
     std::copy(global_x.begin(), global_x.end(), output);
   } else {
-    // Non-root processes must have output buffer of correct size
-    if (task_data->outputs_count[0] < global_size_) {
-      task_data->outputs[0] = reinterpret_cast<uint8_t*>(global_x.data());
-    } else {
-      auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+    // Handle cases where output buffer size mismatch (safety check)
+    if (rank == 0) {
       std::copy(global_x.begin(), global_x.end(), output);
     }
+    boost::mpi::broadcast(world_, output, global_size_, 0);
   }
 
   return true;
