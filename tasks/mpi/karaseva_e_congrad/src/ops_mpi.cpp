@@ -63,7 +63,7 @@ bool TestTaskMPI::PreProcessingImpl() {
     local_size_ = b_.size();
   }
 
-  // Broadcast global_size_ to all processes
+  // Broadcast global_size_ to all processes to ensure consistency
   boost::mpi::broadcast(world_, global_size_, 0);
 
   x_.resize(local_size_, 0.0);
@@ -94,7 +94,7 @@ bool TestTaskMPI::RunImpl() {
     p[i] = r[i];
   }
 
-  // Compute initial residual norm
+  // Compute initial residual norm using atomic operations
   double local_rs_old = 0.0;
 #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -128,7 +128,7 @@ bool TestTaskMPI::RunImpl() {
       ap[i] = sum;
     }
 
-    // Compute p^T*A*p
+    // Compute p^T*A*p with atomic operations
     double local_p_ap = 0.0;
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -148,7 +148,7 @@ bool TestTaskMPI::RunImpl() {
       r[i] -= alpha * ap[i];
     }
 
-    // Compute new residual norm
+    // Compute new residual norm with atomic operations
     double local_rs_new = 0.0;
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -170,22 +170,23 @@ bool TestTaskMPI::RunImpl() {
     rs_old = rs_new;
   }
 
-  // Gather and distribute final solution to all processes
+  // Gather final solution to root process and broadcast to all
   std::vector<double> global_x;
   boost::mpi::gather(world_, x_.data(), static_cast<int>(local_size_), global_x, 0);
   boost::mpi::broadcast(world_, global_x, 0);
 
-  // Ensure all processes have the correct output buffer size
-  if (rank != 0) {
+  // Ensure output buffer is properly initialized on all processes
+  if (rank == 0) {
     auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+    std::copy(global_x.begin(), global_x.end(), output);
+  } else {
+    // Non-root processes must have output buffer of correct size
     if (task_data->outputs_count[0] < global_size_) {
       task_data->outputs[0] = reinterpret_cast<uint8_t*>(global_x.data());
     } else {
+      auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
       std::copy(global_x.begin(), global_x.end(), output);
     }
-  } else {
-    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
-    std::copy(global_x.begin(), global_x.end(), output);
   }
 
   return true;
