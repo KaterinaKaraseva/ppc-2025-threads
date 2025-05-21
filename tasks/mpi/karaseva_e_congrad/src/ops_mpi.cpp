@@ -10,6 +10,8 @@
 #include "boost/mpi/collectives/broadcast.hpp"
 #include "core/util/include/util.hpp"
 
+#include <omp.h>
+
 namespace karaseva_e_congrad_mpi {
 
 bool TestTaskMPI::PreProcessingImpl() {
