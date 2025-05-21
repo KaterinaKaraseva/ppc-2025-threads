@@ -2,14 +2,13 @@
 
 #include <algorithm>
 #include <boost/mpi/communicator.hpp>
-#include <boost/mpi/operations.hpp>
+#include <boost/serialization/vector.hpp>
 #include <cmath>
 #include <cstddef>
 #include <vector>
 
 #include "boost/mpi/collectives/broadcast.hpp"
 #include "core/util/include/util.hpp"
-#include "mpi.h"
 
 namespace karaseva_e_congrad_mpi {
 
@@ -76,7 +75,7 @@ bool TestTaskMPI::ValidationImpl() {
 
 bool TestTaskMPI::RunImpl() {
   int rank = world_.rank();
-  int size = world_.size();
+  const int size = world_.size();
 
   std::vector<double> r(local_size_);   // Local residual
   std::vector<double> p(local_size_);   // Local search direction
