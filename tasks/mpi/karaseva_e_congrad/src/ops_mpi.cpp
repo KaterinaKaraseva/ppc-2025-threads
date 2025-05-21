@@ -75,7 +75,7 @@ bool TestTaskMPI::ValidationImpl() {
 
 bool TestTaskMPI::RunImpl() {
   int rank = world_.rank();
-  const int size = world_.size();
+  // Removed unused 'size' variable
 
   std::vector<double> r(local_size_);   // Local residual
   std::vector<double> p(local_size_);   // Local search direction
