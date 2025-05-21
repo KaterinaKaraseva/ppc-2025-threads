@@ -6,7 +6,6 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/serialization/vector.hpp>
 #include <cmath>
-#include <cstddef>
 #include <vector>
 
 #include "boost/mpi/collectives/broadcast.hpp"
@@ -51,21 +50,17 @@ bool TestTaskMPI::PreProcessingImpl() {
         b_ = std::move(local_b);
         local_size_ = num_rows;
       } else {
-        // Use different tags for matrix and vector to avoid conflicts
         world_.send(proc, 1, local_A);
         world_.send(proc, 2, local_b);
       }
     }
   } else {
-    // Receive with matching tags
     world_.recv(0, 1, A_);
     world_.recv(0, 2, b_);
     local_size_ = b_.size();
   }
 
-  // Broadcast global_size_ to all processes to ensure consistency
   boost::mpi::broadcast(world_, global_size_, 0);
-
   x_.resize(local_size_, 0.0);
   return true;
 }
@@ -82,19 +77,15 @@ bool TestTaskMPI::ValidationImpl() {
 
 bool TestTaskMPI::RunImpl() {
   int rank = world_.rank();
+  std::vector<double> r(local_size_), p(local_size_), ap(local_size_);
 
-  std::vector<double> r(local_size_);   // Local residual
-  std::vector<double> p(local_size_);   // Local search direction
-  std::vector<double> ap(local_size_);  // Local part of A*p
-
-  // Initialize residual and search direction
+  // Initialize residual and search direction with OpenMP
 #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(local_size_); ++i) {
     r[i] = b_[i];
     p[i] = r[i];
   }
 
-  // Compute initial residual norm using atomic operations for macOS compatibility
   double local_rs_old = 0.0;
 #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -107,18 +98,12 @@ bool TestTaskMPI::RunImpl() {
   constexpr double tolerance = 1e-10;
   const size_t max_iterations = global_size_;
 
-  // Main conjugate gradient loop
   for (size_t it = 0; it < max_iterations; ++it) {
     std::vector<double> global_p;
-    if (rank == 0) {
-      global_p.resize(global_size_);
-    }
-
-    // Gather and broadcast search direction vector
     boost::mpi::gather(world_, p.data(), static_cast<int>(local_size_), global_p, 0);
     boost::mpi::broadcast(world_, global_p, 0);
 
-    // Compute local part of A*p
+    // Compute matrix-vector product with OpenMP
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
       double sum = 0.0;
@@ -128,7 +113,6 @@ bool TestTaskMPI::RunImpl() {
       ap[i] = sum;
     }
 
-    // Compute p^T*A*p with atomic operations
     double local_p_ap = 0.0;
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -141,14 +125,12 @@ bool TestTaskMPI::RunImpl() {
     if (std::fabs(p_ap) < 1e-15) break;
     const double alpha = rs_old / p_ap;
 
-    // Update solution and residual
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
       x_[i] += alpha * p[i];
       r[i] -= alpha * ap[i];
     }
 
-    // Compute new residual norm with atomic operations
     double local_rs_new = 0.0;
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -160,7 +142,6 @@ bool TestTaskMPI::RunImpl() {
 
     if (rs_new < tolerance * tolerance) break;
 
-    // Update search direction
     const double beta = rs_new / rs_old;
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -170,21 +151,13 @@ bool TestTaskMPI::RunImpl() {
     rs_old = rs_new;
   }
 
-  // Gather final solution to root process and broadcast to all
   std::vector<double> global_x;
   boost::mpi::gather(world_, x_.data(), static_cast<int>(local_size_), global_x, 0);
   boost::mpi::broadcast(world_, global_x, 0);
 
-  // Ensure all processes have the solution in their output buffer
-  auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
-  if (global_x.size() == static_cast<size_t>(task_data->outputs_count[0])) {
+  if (rank == 0) {
+    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
     std::copy(global_x.begin(), global_x.end(), output);
-  } else {
-    // Handle cases where output buffer size mismatch (safety check)
-    if (rank == 0) {
-      std::copy(global_x.begin(), global_x.end(), output);
-    }
-    boost::mpi::broadcast(world_, output, global_size_, 0);
   }
 
   return true;

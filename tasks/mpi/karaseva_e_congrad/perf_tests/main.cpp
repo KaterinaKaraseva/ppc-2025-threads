@@ -20,17 +20,17 @@ TEST(karaseva_e_congrad_mpi, test_pipeline_run) {
   std::vector<double> x(kCount, 0.0);
 
   // Initialize A as identity matrix
-  for (size_t i = 0; i < kCount; i++) {
+  for (size_t i = 0; i < kCount; ++i) {
     A[i * kCount + i] = 1.0;
   }
 
   // Create task_data
   auto task_data_mpi = std::make_shared<ppc::core::TaskData>();
-  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t *>(A.data()));
+  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t*>(A.data()));
   task_data_mpi->inputs_count.emplace_back(A.size());
-  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t *>(b.data()));
+  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t*>(b.data()));
   task_data_mpi->inputs_count.emplace_back(b.size());
-  task_data_mpi->outputs.emplace_back(reinterpret_cast<uint8_t *>(x.data()));
+  task_data_mpi->outputs.emplace_back(reinterpret_cast<uint8_t*>(x.data()));
   task_data_mpi->outputs_count.emplace_back(x.size());
 
   // Create Task
@@ -58,7 +58,7 @@ TEST(karaseva_e_congrad_mpi, test_pipeline_run) {
   if (world.rank() == 0) {
     ppc::core::Perf::PrintPerfStatistic(perf_results);
     for (size_t i = 0; i < kCount; ++i) {
-      EXPECT_NEAR(x[i], b[i], 1e-6);
+      EXPECT_NEAR(x[i], 1.0, 1e-6);
     }
   }
 }
@@ -72,17 +72,17 @@ TEST(karaseva_e_congrad_mpi, test_task_run) {
   std::vector<double> x(kCount, 0.0);
 
   // Initialize A as identity matrix
-  for (size_t i = 0; i < kCount; i++) {
+  for (size_t i = 0; i < kCount; ++i) {
     A[i * kCount + i] = 1.0;
   }
 
   // Create task_data
   auto task_data_mpi = std::make_shared<ppc::core::TaskData>();
-  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t *>(A.data()));
+  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t*>(A.data()));
   task_data_mpi->inputs_count.emplace_back(A.size());
-  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t *>(b.data()));
+  task_data_mpi->inputs.emplace_back(reinterpret_cast<uint8_t*>(b.data()));
   task_data_mpi->inputs_count.emplace_back(b.size());
-  task_data_mpi->outputs.emplace_back(reinterpret_cast<uint8_t *>(x.data()));
+  task_data_mpi->outputs.emplace_back(reinterpret_cast<uint8_t*>(x.data()));
   task_data_mpi->outputs_count.emplace_back(x.size());
 
   // Create Task
@@ -110,7 +110,7 @@ TEST(karaseva_e_congrad_mpi, test_task_run) {
   if (world.rank() == 0) {
     ppc::core::Perf::PrintPerfStatistic(perf_results);
     for (size_t i = 0; i < kCount; ++i) {
-      EXPECT_NEAR(x[i], b[i], 1e-6);
+      EXPECT_NEAR(x[i], 1.0, 1e-6);
     }
   }
 }
