@@ -51,13 +51,15 @@ bool TestTaskMPI::PreProcessingImpl() {
         b_ = std::move(local_b);
         local_size_ = num_rows;
       } else {
-        world_.send(proc, 0, local_A);
-        world_.send(proc, 0, local_b);
+        // Use different tags for matrix and vector to avoid conflicts
+        world_.send(proc, 1, local_A);
+        world_.send(proc, 2, local_b);
       }
     }
   } else {
-    world_.recv(0, 0, A_);
-    world_.recv(0, 0, b_);
+    // Receive with matching tags
+    world_.recv(0, 1, A_);
+    world_.recv(0, 2, b_);
     local_size_ = b_.size();
   }
 
@@ -103,19 +105,16 @@ bool TestTaskMPI::RunImpl() {
 
   // Main conjugate gradient loop
   for (size_t it = 0; it < max_iterations; ++it) {
-    // Alternative to all_gatherv: gather + broadcast
     std::vector<double> global_p;
     if (rank == 0) {
       global_p.resize(global_size_);
     }
 
-    // Gather parts to root
+    // Gather and broadcast search direction vector
     boost::mpi::gather(world_, p.data(), static_cast<int>(local_size_), global_p, 0);
-
-    // Broadcast full vector to all processes
     boost::mpi::broadcast(world_, global_p, 0);
 
-    // Compute local part of matrix-vector product
+    // Compute local part of A*p
 #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
       double sum = 0.0;
@@ -125,7 +124,7 @@ bool TestTaskMPI::RunImpl() {
       ap[i] = sum;
     }
 
-    // Compute p^T * A * p
+    // Compute p^T*A*p
     double local_p_ap = 0.0;
 #pragma omp parallel for reduction(+ : local_p_ap)
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
@@ -165,18 +164,14 @@ bool TestTaskMPI::RunImpl() {
     rs_old = rs_new;
   }
 
-  // Gather final solution to root process
+  // Gather and distribute final solution to all processes
   std::vector<double> global_x;
-  if (rank == 0) {
-    global_x.resize(global_size_);
-  }
-
   boost::mpi::gather(world_, x_.data(), static_cast<int>(local_size_), global_x, 0);
+  boost::mpi::broadcast(world_, global_x, 0);
 
-  if (rank == 0) {
-    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
-    std::copy(global_x.begin(), global_x.end(), output);
-  }
+  // Write result to output (available on all processes)
+  auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+  std::copy(global_x.begin(), global_x.end(), output);
 
   return true;
 }
