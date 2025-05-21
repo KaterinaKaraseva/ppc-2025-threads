@@ -1,5 +1,7 @@
 #include "mpi/karaseva_e_congrad/include/ops_mpi.hpp"
 
+#include <omp.h>
+
 #include <algorithm>
 #include <boost/mpi/communicator.hpp>
 #include <boost/serialization/vector.hpp>
@@ -9,8 +11,6 @@
 
 #include "boost/mpi/collectives/broadcast.hpp"
 #include "core/util/include/util.hpp"
-
-#include <omp.h>
 
 namespace karaseva_e_congrad_mpi {
 
@@ -77,7 +77,6 @@ bool TestTaskMPI::ValidationImpl() {
 
 bool TestTaskMPI::RunImpl() {
   int rank = world_.rank();
-  // Removed unused 'size' variable
 
   std::vector<double> r(local_size_);   // Local residual
   std::vector<double> p(local_size_);   // Local search direction
