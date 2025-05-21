@@ -63,6 +63,9 @@ bool TestTaskMPI::PreProcessingImpl() {
     local_size_ = b_.size();
   }
 
+  // Broadcast global_size_ to all processes
+  boost::mpi::broadcast(world_, global_size_, 0);
+
   x_.resize(local_size_, 0.0);
   return true;
 }
@@ -93,8 +96,9 @@ bool TestTaskMPI::RunImpl() {
 
   // Compute initial residual norm
   double local_rs_old = 0.0;
-#pragma omp parallel for reduction(+ : local_rs_old)
+#pragma omp parallel for
   for (int i = 0; i < static_cast<int>(local_size_); ++i) {
+#pragma omp atomic
     local_rs_old += r[i] * r[i];
   }
   double rs_old = 0.0;
@@ -126,8 +130,9 @@ bool TestTaskMPI::RunImpl() {
 
     // Compute p^T*A*p
     double local_p_ap = 0.0;
-#pragma omp parallel for reduction(+ : local_p_ap)
+#pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
+#pragma omp atomic
       local_p_ap += p[i] * ap[i];
     }
     double p_ap = 0.0;
@@ -145,8 +150,9 @@ bool TestTaskMPI::RunImpl() {
 
     // Compute new residual norm
     double local_rs_new = 0.0;
-#pragma omp parallel for reduction(+ : local_rs_new)
+#pragma omp parallel for
     for (int i = 0; i < static_cast<int>(local_size_); ++i) {
+#pragma omp atomic
       local_rs_new += r[i] * r[i];
     }
     double rs_new = 0.0;
@@ -169,9 +175,18 @@ bool TestTaskMPI::RunImpl() {
   boost::mpi::gather(world_, x_.data(), static_cast<int>(local_size_), global_x, 0);
   boost::mpi::broadcast(world_, global_x, 0);
 
-  // Write result to output (available on all processes)
-  auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
-  std::copy(global_x.begin(), global_x.end(), output);
+  // Ensure all processes have the correct output buffer size
+  if (rank != 0) {
+    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+    if (task_data->outputs_count[0] < global_size_) {
+      task_data->outputs[0] = reinterpret_cast<uint8_t*>(global_x.data());
+    } else {
+      std::copy(global_x.begin(), global_x.end(), output);
+    }
+  } else {
+    auto* output = reinterpret_cast<double*>(task_data->outputs[0]);
+    std::copy(global_x.begin(), global_x.end(), output);
+  }
 
   return true;
 }
