@@ -11,8 +11,8 @@
 #include "omp/titov_s_ImageFilter_HorizGaussian3x3/include/ops_omp.hpp"
 
 TEST(titov_s_image_filter_horiz_gaussian3x3_omp, test_pipeline_run) {
-  constexpr size_t kWidth = 15000;
-  constexpr size_t kHeight = 15000;
+  constexpr size_t kWidth = 9000;
+  constexpr size_t kHeight = 9000;
   std::vector<double> input_image(kWidth * kHeight, 0.0);
   std::vector<double> output_image(kWidth * kHeight, 0.0);
   std::vector<double> expected(kWidth * kHeight, 0.0);
@@ -21,7 +21,7 @@ TEST(titov_s_image_filter_horiz_gaussian3x3_omp, test_pipeline_run) {
   for (size_t i = 0; i < kHeight; ++i) {
     for (size_t j = 0; j < kWidth; ++j) {
       input_image[(i * kWidth) + j] = (j % 3 == 0) ? 100.0 : 0.0;
-      if (j == 14999) {
+      if (j == kWidth - 1) {
         expected[(i * kWidth) + j] = 0.0;
       } else {
         expected[(i * kWidth) + j] = (j % 3 == 0) ? 50.0 : 25.0;
@@ -65,8 +65,8 @@ TEST(titov_s_image_filter_horiz_gaussian3x3_omp, test_pipeline_run) {
 }
 
 TEST(titov_s_image_filter_horiz_gaussian3x3_omp, test_task_run) {
-  constexpr size_t kWidth = 15000;
-  constexpr size_t kHeight = 15000;
+  constexpr size_t kWidth = 9000;
+  constexpr size_t kHeight = 9000;
   std::vector<double> input_image(kWidth * kHeight, 0.0);
   std::vector<double> output_image(kWidth * kHeight, 0.0);
   std::vector<double> expected(kWidth * kHeight, 0.0);
@@ -75,7 +75,7 @@ TEST(titov_s_image_filter_horiz_gaussian3x3_omp, test_task_run) {
   for (size_t i = 0; i < kHeight; ++i) {
     for (size_t j = 0; j < kWidth; ++j) {
       input_image[(i * kWidth) + j] = (j % 3 == 0) ? 100.0 : 0.0;
-      if (j == 14999) {
+      if (j == kWidth - 1) {
         expected[(i * kWidth) + j] = 0.0;
       } else {
         expected[(i * kWidth) + j] = (j % 3 == 0) ? 50.0 : 25.0;

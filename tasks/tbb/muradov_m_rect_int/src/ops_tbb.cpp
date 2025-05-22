@@ -41,7 +41,7 @@ bool muradov_m_rect_int_tbb::RectIntTaskTBBPar::RunImpl() {
   oneapi::tbb::task_arena arena(ppc::util::GetPPCNumThreads());
   res_ = arena.execute([&] {
     return oneapi::tbb::parallel_reduce(
-        oneapi::tbb::blocked_range(0, pts), 0.0,
+        oneapi::tbb::blocked_range(0, pts, pts / arena.max_concurrency()), 0.0,
         [&](const tbb::blocked_range<int>& rng, double s) {
           FunArgs args(dims);
           for (int i = rng.begin(); i < rng.end(); i++) {

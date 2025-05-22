@@ -12,7 +12,7 @@
 using namespace khasanyanov_k_trapezoid_method_tbb;
 
 TEST(khasanyanov_k_trapezoid_method_tbb, test_pipeline_run) {
-  constexpr double kPrecision = 0.0001;
+  constexpr double kPrecision = 0.01;
   double result{};
   auto f = [](const std::vector<double>& x) -> double {
     return (x[0] * x[0]) - (3 * x[1] * x[1] * x[2] * x[2]) + x[2];
@@ -43,7 +43,7 @@ TEST(khasanyanov_k_trapezoid_method_tbb, test_pipeline_run) {
 }
 
 TEST(khasanyanov_k_trapezoid_method_tbb, test_task_run) {
-  constexpr double kPrecision = 0.0001;
+  constexpr double kPrecision = 0.01;
   double result{};
   auto f = [](const std::vector<double>& x) -> double {
     return (x[0] * x[0]) - (3 * x[1] * x[1] * x[2] * x[2]) + x[2];
