@@ -7,8 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include "core/util/include/util.hpp"
-
 bool muradov_m_rect_int_omp::RectIntTaskOmp::ValidationImpl() {
   return task_data->inputs_count[0] == 1 && task_data->inputs_count[1] > 0 && task_data->outputs_count[0] == 1;
 }
@@ -36,7 +34,7 @@ bool muradov_m_rect_int_omp::RectIntTaskOmp::RunImpl() {
 
   FunArgs args(dims);
   decltype(res_) lres{};
-#pragma omp parallel for reduction(+ : lres) firstprivate(args) schedule(static, pts / ppc::util::GetPPCNumThreads())
+#pragma omp parallel for reduction(+ : lres) firstprivate(args)
   for (int i = 0; i < pts; i++) {
     auto j = i;
     for (size_t k = 0; k < dims; k++) {
