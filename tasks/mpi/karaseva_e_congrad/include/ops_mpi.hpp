@@ -22,7 +22,6 @@ class TestTaskMPI : public ppc::core::Task {
   std::vector<double> b_;        // Full RHS vector
   std::vector<double> x_;        // Solution vector
   uint64_t global_size_{};       // Global system size
-  size_t local_size_ = 0;        // Local rows count
   int rank_ = 0;                 // Process rank
   int world_size_ = 1;           // Total processes
 };

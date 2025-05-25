@@ -77,3 +77,42 @@ TEST(karaseva_e_congrad_mpi, test_small_matrix_2x2) {
     EXPECT_NEAR(solution[i], x_expected[i], kTolerance);
   }
 }
+
+TEST(karaseva_e_congrad_mpi, test_small_random_spd) {
+  constexpr size_t kN = 10;
+  constexpr double kTolerance = 1e-6;
+
+  // Generate random SPD matrix
+  auto a_matrix = GenerateRandomSPDMatrix(kN);
+
+  // Generate random solution vector
+  std::vector<double> x_expected(kN);
+  std::mt19937 gen(42);
+  std::uniform_real_distribution<double> dist(-10.0, 10.0);
+  for (auto& val : x_expected) {
+    val = dist(gen);
+  }
+
+  // Compute b = A * x_expected
+  auto b = MultiplyMatrixVector(a_matrix, x_expected, kN);
+
+  // Task configuration
+  std::vector<double> x(kN, 0.0);
+  auto task_data = std::make_shared<ppc::core::TaskData>();
+  task_data->inputs = {reinterpret_cast<uint8_t*>(a_matrix.data()), reinterpret_cast<uint8_t*>(b.data())};
+  task_data->inputs_count = {kN * kN, kN};
+  task_data->outputs = {reinterpret_cast<uint8_t*>(x.data())};
+  task_data->outputs_count = {kN};
+
+  // Create Task
+  karaseva_e_congrad_mpi::TestTaskMPI task(task_data);
+  ASSERT_TRUE(task.Validation());
+  task.PreProcessing();
+  task.Run();
+  task.PostProcessing();
+
+  // Verification
+  for (size_t i = 0; i < kN; ++i) {
+    EXPECT_NEAR(x[i], x_expected[i], kTolerance);
+  }
+}
