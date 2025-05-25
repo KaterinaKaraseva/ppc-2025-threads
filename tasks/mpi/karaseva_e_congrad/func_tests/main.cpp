@@ -25,7 +25,7 @@ std::vector<double> GenerateRandomSPDMatrix(size_t matrix_size, unsigned int see
   std::vector<double> a_matrix(matrix_size * matrix_size, 0.0);
   const auto matrix_size_d = static_cast<double>(matrix_size);
 
-  // Generate symmetric positive-definite matrix
+  // Generate symmetric positive-definite matrix.
   for (size_t i = 0; i < matrix_size; ++i) {
     for (size_t j = 0; j < matrix_size; ++j) {
       for (size_t k = 0; k < matrix_size; ++k) {

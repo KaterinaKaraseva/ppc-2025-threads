@@ -14,7 +14,7 @@
 TEST(karaseva_e_congrad_mpi, test_pipeline_run) {
   constexpr int kSize = 10000;
 
-  // Create data
+  // Create data.
   std::vector<double> a(kSize * kSize, 0.0);
   std::vector<double> b(kSize, 1.0);
   std::vector<double> x(kSize, 0.0);

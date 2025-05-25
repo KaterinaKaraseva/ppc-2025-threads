@@ -31,7 +31,7 @@ bool TestTaskMPI::PreProcessingImpl() {
     auto* b_ptr = reinterpret_cast<double*>(task_data->inputs[1]);
     std::copy(b_ptr, b_ptr + global_size_, b_.begin());
 
-    // determine how many rows of A each process gets
+    // determine how many rows of A each process gets.
     const int rows_per_proc = static_cast<int>(global_size_) / world_size_;
     const int remainder = static_cast<int>(global_size_) % world_size_;
     int offset = 0;
