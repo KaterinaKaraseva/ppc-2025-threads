@@ -1,0 +1,30 @@
+#pragma once
+
+#include <mpi.h>
+#include <omp.h>
+
+#include <vector>
+
+#include "core/task/include/task.hpp"
+
+namespace karaseva_e_congrad_mpi {
+
+class TestTaskMPI : public ppc::core::Task {
+ public:
+  explicit TestTaskMPI(ppc::core::TaskDataPtr task_data) : Task(std::move(task_data)) {}
+  bool PreProcessingImpl() override;
+  bool ValidationImpl() override;
+  bool RunImpl() override;
+  bool PostProcessingImpl() override;
+
+ private:
+  std::vector<double> A_local_;  // Local part of matrix
+  std::vector<double> b_;        // Full RHS vector
+  std::vector<double> x_;        // Solution vector
+  uint64_t global_size_{};       // Global system size
+  size_t local_size_ = 0;        // Local rows count
+  int rank_ = 0;                 // Process rank
+  int world_size_ = 1;           // Total processes
+};
+
+}  // namespace karaseva_e_congrad_mpi
