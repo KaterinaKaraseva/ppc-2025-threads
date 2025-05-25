@@ -1,6 +1,7 @@
 #include "tbb/shulpin_i_jarvis_passage/include/ops_tbb.hpp"
 
 #include <oneapi/tbb/concurrent_unordered_set.h>
+#include <oneapi/tbb/concurrent_vector.h>
 #include <oneapi/tbb/parallel_reduce.h>
 
 #include <algorithm>
@@ -82,52 +83,59 @@ bool shulpin_i_jarvis_tbb::JarvisSequential::PostProcessingImpl() {
 
 void shulpin_i_jarvis_tbb::JarvisTBBParallel::MakeJarvisPassageTBB(
     std::vector<shulpin_i_jarvis_tbb::Point>& input_jar, std::vector<shulpin_i_jarvis_tbb::Point>& output_jar) {
-  size_t total_size_t = input_jar.size();
-  auto total = static_cast<int32_t>(total_size_t);
-  output_jar.clear();
+  int n = static_cast<int>(input_jar.size());
 
-  int32_t start = 0;
-  for (int32_t i = 1; i < total; ++i) {
+  int start = 0;
+  for (int i = 1; i < n; ++i) {
     if (input_jar[i].x < input_jar[start].x ||
         (input_jar[i].x == input_jar[start].x && input_jar[i].y < input_jar[start].y)) {
       start = i;
     }
   }
 
-  int32_t active = start;
+  std::vector<Point> hull;
+  hull.reserve(n);
+  tbb::concurrent_unordered_set<Point, PointHash, PointEqual> visited;
 
-  std::vector<shulpin_i_jarvis_tbb::Point> hull;
-  tbb::concurrent_unordered_set<shulpin_i_jarvis_tbb::Point, PointHash> unique_points;
-
-  int32_t max_iterations = total;
-
+  int current = start;
   do {
-    if (unique_points.insert(input_jar[active]).second) {
-      hull.push_back(input_jar[active]);
+    const Point& cur_pt = input_jar[current];
+    if (visited.insert(cur_pt).second) {
+      hull.push_back(cur_pt);
     }
 
-    int32_t candidate = (active + 1) % total;
+    struct BlockCandidate {
+      int index;
+      Point pt;
+    };
+    tbb::concurrent_vector<BlockCandidate> local_cands;
+    int initial = (current + 1) % n;
 
-    candidate = tbb::parallel_reduce(
-        tbb::blocked_range<int32_t>(0, total), candidate,
-        [&](const tbb::blocked_range<int32_t>& range, int32_t local_candidate) -> int32_t {
-          for (int32_t index = range.begin(); index < range.end(); ++index) {
-            if (Orientation(input_jar[active], input_jar[index], input_jar[local_candidate]) == 2) {
-              local_candidate = index;
-            }
-          }
-          return local_candidate;
-        },
-        [&](int32_t a, int32_t b) -> int32_t {
-          return (Orientation(input_jar[active], input_jar[a], input_jar[b]) == 2) ? a : b;
-        });
+    tbb::parallel_for(tbb::blocked_range<int>(0, n), [&](const tbb::blocked_range<int>& r) {
+      int best = initial;
+      for (int i = r.begin(); i < r.end(); ++i) {
+        if (i == current) {
+          continue;
+        }
+        int orient = Orientation(cur_pt, input_jar[i], input_jar[best]);
+        if (orient == 2) {
+          best = i;
+        }
+      }
+      local_cands.push_back({best, input_jar[best]});
+    });
 
-    if (candidate == active || max_iterations-- <= 0) {
-      break;
+    int candidate = local_cands[0].index;
+    for (size_t i = 1; i < local_cands.size(); ++i) {
+      int idx = local_cands[i].index;
+      int orient = Orientation(cur_pt, input_jar[idx], input_jar[candidate]);
+      if (orient == 2) {
+        candidate = idx;
+      }
     }
-    active = candidate;
 
-  } while (active != start);
+    current = candidate;
+  } while (current != start);
 
   output_jar = std::move(hull);
 }

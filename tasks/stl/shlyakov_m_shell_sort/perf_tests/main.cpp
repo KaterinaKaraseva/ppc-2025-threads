@@ -49,7 +49,7 @@ bool IsSorted(const std::vector<int>& arr) {
 }  // namespace
 
 TEST(shlyakov_m_shell_sort_stl, test_pipeline_run) {
-  constexpr size_t kCount = 50000;
+  constexpr size_t kCount = 100000;
 
   std::vector<int> in = GenerateRandomArray(kCount);
   std::vector<int> expected = in;
@@ -83,7 +83,7 @@ TEST(shlyakov_m_shell_sort_stl, test_pipeline_run) {
 }
 
 TEST(shlyakov_m_shell_sort_stl, test_task_run) {
-  constexpr size_t kCount = 50000;
+  constexpr size_t kCount = 100000;
 
   std::vector<int> in = GenerateRandomArray(kCount);
   std::vector<int> expected = in;
