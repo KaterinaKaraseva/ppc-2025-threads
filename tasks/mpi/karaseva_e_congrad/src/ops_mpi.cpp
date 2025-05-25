@@ -2,6 +2,7 @@
 
 #include <mpi.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -194,9 +195,11 @@ bool TestTaskMPI::RunImpl() {
 }
 
 bool TestTaskMPI::PostProcessingImpl() {
-  // ensure root has final x, then broadcast to others
+  // broadcast the computed solution vector x_ to all ranks
   MPI_Bcast(x_.data(), static_cast<int>(global_size_), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  if (rank_ == 0 && task_data->outputs[0] != nullptr) {
+
+  // copy into user buffer on every rank
+  if (task_data->outputs[0] != nullptr) {
     auto* x_ptr = reinterpret_cast<double*>(task_data->outputs[0]);
     std::copy(x_.begin(), x_.end(), x_ptr);
   }
